@@ -4,6 +4,9 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.le.BluetoothLeScanner;
+import android.bluetooth.le.ScanCallback;
+import android.bluetooth.le.ScanResult;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -12,13 +15,17 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.view.View;
 import android.widget.TextView;
 
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
+@RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
 public class MainActivity extends AppCompatActivity implements SensorEventListener {
     private SensorManager sensorManager;
     private Sensor mLight;
@@ -26,6 +33,46 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private final static int REQUEST_ENABLE_BT = 1000;
     private final static int REQUEST_PERMIT_SCAN = 1010;
 
+
+    //private LeDeviceListAdapter leDeviceListAdapter = new LeDeviceListAdapter();
+
+    // Device scan callback.
+    private ScanCallback leScanCallback =
+            new ScanCallback() {
+                @Override
+                public void onScanResult(int callbackType, ScanResult result) {
+                    super.onScanResult(callbackType, result);
+                    System.out.println(result.getDevice());
+                    //leDeviceListAdapter.addDevice(result.getDevice());
+                    //leDeviceListAdapter.notifyDataSetChanged();
+                }
+            };
+
+    private BluetoothLeScanner bluetoothLeScanner;
+    private boolean scanning;
+    private Handler handler = new Handler();
+
+    // Stops scanning after 10 seconds.
+    private static final long SCAN_PERIOD = 10000;
+
+    private void scanLeDevice() {
+        if (!scanning) {
+            // Stops scanning after a predefined scan period.
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    scanning = false;
+                    bluetoothLeScanner.stopScan(leScanCallback);
+                }
+            }, SCAN_PERIOD);
+
+            scanning = true;
+            bluetoothLeScanner.startScan(leScanCallback);
+        } else {
+            scanning = false;
+            bluetoothLeScanner.stopScan(leScanCallback);
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,16 +82,18 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         mLight = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
 
+
+
         // Bluetoothデバiスの確認
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        if (bluetoothAdapter == null) {
-            writeMsg("Device doesn't support Bluetooth");
-        }
         // BluetoothがONになっていなければONにする
         if (!bluetoothAdapter.isEnabled()) {
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+            bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         }
+        bluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
+        /*
         // パーミッションを要求する
         ActivityCompat.requestPermissions(this,
                 new String[] {Manifest.permission.BLUETOOTH_SCAN}, REQUEST_PERMIT_SCAN);
@@ -69,6 +118,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         if (!bluetoothAdapter.startDiscovery()) {
             writeMsg("Can't start discovery");
         }
+
+         */
     }
 
     @Override
@@ -89,6 +140,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     // Searchボタンが押されたときの処理
     public void searchBtn(View view) {
         // 検索を開始する
+        scanLeDevice();
+        /*
         Intent discoverableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
         Intent intent = discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
         if (!bluetoothAdapter.startDiscovery()) {
@@ -97,9 +150,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         else {
             writeMsg("Searching...");
         }
+         */
     }
 
     // 非同期の処理内容
+    /*
     private final BroadcastReceiver receiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -120,6 +175,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             }
         }
     };
+    */
 
     @Override
     protected void onResume() {
@@ -133,11 +189,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         sensorManager.unregisterListener(this);
     }
 
+    /*
     // Bluetooth を ONにしたときの処理
     @Override
     protected void onActivityResult (int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         writeMsg(requestCode+","+resultCode);
     }
-
+    */
 }
