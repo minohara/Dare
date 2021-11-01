@@ -1,77 +1,74 @@
 package org.minohara.dare;
 
 import android.Manifest;
-import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
+import android.bluetooth.le.ScanFilter;
 import android.bluetooth.le.ScanResult;
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
+import android.bluetooth.le.ScanSettings;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
+import android.os.ParcelUuid;
+import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
+import java.util.AbstractList;
+import java.util.ArrayList;
+import java.util.List;
 
 @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-public class MainActivity extends AppCompatActivity implements SensorEventListener {
-    private SensorManager sensorManager;
-    private Sensor mLight;
-    private BluetoothAdapter bluetoothAdapter;
-    private final static int REQUEST_ENABLE_BT = 1000;
-    private final static int REQUEST_PERMIT_SCAN = 1010;
+public class MainActivity extends AppCompatActivity {
+    private static final String TAG = "Dare";
+    private DataServer dataServer;
+    private SensorData sensorData;
 
+    private TextView textView;
 
-    //private LeDeviceListAdapter leDeviceListAdapter = new LeDeviceListAdapter();
+    private BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+    private BluetoothLeScanner scanner = null;
+    private List<ScanFilter> scanFilters;
+    ScanSettings scanSettings;
 
-    // Device scan callback.
-    private ScanCallback leScanCallback =
+    private void startScan() {
+        if (scanner == null) {
+            scanner = adapter.getBluetoothLeScanner();
+        }
+        textView.setText("");
+        scanner.startScan(scanFilters, scanSettings, scanCallback);
+        //scanner.startScan(scanCallback);
+        Log.d(TAG, "Scan started");
+    }
+
+    private ScanCallback scanCallback =
             new ScanCallback() {
                 @Override
-                public void onScanResult(int callbackType, ScanResult result) {
-                    super.onScanResult(callbackType, result);
-                    System.out.println(result.getDevice());
-                    //leDeviceListAdapter.addDevice(result.getDevice());
-                    //leDeviceListAdapter.notifyDataSetChanged();
+                public void onScanResult(int type, ScanResult result) {
+                    super.onScanResult(type, result);
+                    textView.append(result.toString());
+                    Log.d(TAG, String.format("onScanResult: %s", result.toString()));
                 }
             };
 
-    private BluetoothLeScanner bluetoothLeScanner;
-    private boolean scanning;
-    private Handler handler = new Handler();
+    private List<ScanFilter> buildScanFiters() {
+        ScanFilter.Builder builder = new ScanFilter.Builder();
+        builder.setServiceUuid(new ParcelUuid(DataServer.SERVICE_UUID));
+        List<ScanFilter> filters = new ArrayList<ScanFilter>();
+        filters.add(builder.build());
+        Log.d(TAG, filters.toString());
+        return filters;
+    }
 
-    // Stops scanning after 10 seconds.
-    private static final long SCAN_PERIOD = 10000;
-
-    private void scanLeDevice() {
-        if (!scanning) {
-            // Stops scanning after a predefined scan period.
-            handler.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    scanning = false;
-                    bluetoothLeScanner.stopScan(leScanCallback);
-                }
-            }, SCAN_PERIOD);
-
-            scanning = true;
-            bluetoothLeScanner.startScan(leScanCallback);
-        } else {
-            scanning = false;
-            bluetoothLeScanner.stopScan(leScanCallback);
-        }
+    private ScanSettings buildScanSettings() {
+        ScanSettings.Builder builder = new ScanSettings.Builder();
+        builder.setScanMode(ScanSettings.SCAN_MODE_LOW_POWER);
+        return builder.build();
     }
 
     @Override
@@ -79,57 +76,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        mLight = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
+        textView = (TextView)findViewById(R.id.message);
+        dataServer = new DataServer();
+        sensorData = new SensorData(getApplicationContext());
 
-
-
-        // Bluetoothデバiスの確認
-        bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        // BluetoothがONになっていなければONにする
-        if (!bluetoothAdapter.isEnabled()) {
-            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
-            bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        }
-        bluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
-        /*
-        // パーミッションを要求する
-        ActivityCompat.requestPermissions(this,
-                new String[] {Manifest.permission.BLUETOOTH_SCAN}, REQUEST_PERMIT_SCAN);
-        // 他のデバiスからの検出を許可する
-        Intent discoverableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
-        Intent intent = discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
-        // Bluetooth関連の処理を非同期に行うための設定
-        IntentFilter found = new IntentFilter(BluetoothDevice.ACTION_FOUND);
-        IntentFilter discoveryStarted = new IntentFilter(BluetoothAdapter.ACTION_DISCOVERY_STARTED);
-        IntentFilter discoveryFinished = new IntentFilter(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
-        registerReceiver(receiver, found);
-        registerReceiver(receiver, discoveryStarted);
-        registerReceiver(receiver, discoveryFinished);
-
-        // 検索中かどうかを確認して、検索中なら一度キャンセルする
-        if (bluetoothAdapter.isDiscovering()) {
-            writeMsg("Already in discovering");
-            System.out.println("Already in discovering");
-            bluetoothAdapter.cancelDiscovery();
-        }
-        // 検索を開始する
-        if (!bluetoothAdapter.startDiscovery()) {
-            writeMsg("Can't start discovery");
-        }
-
-         */
-    }
-
-    @Override
-    public final void onAccuracyChanged(Sensor sensor, int accuracy) { }
-
-    @SuppressLint("DefaultLocale")
-    @Override
-    public final void onSensorChanged(SensorEvent event) {
-        float lux = event.values[0];
-        ((TextView)findViewById(R.id.light)).setText(String.format("%8.2f",lux));
+        scanFilters = buildScanFiters();
+        scanSettings = buildScanSettings();
     }
 
     // 画面にメッセ-ジを出すための処理
@@ -139,62 +91,58 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     // Searchボタンが押されたときの処理
     public void searchBtn(View view) {
-        // 検索を開始する
-        scanLeDevice();
-        /*
-        Intent discoverableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
-        Intent intent = discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
-        if (!bluetoothAdapter.startDiscovery()) {
-            writeMsg("Can't start discovery");
-        }
-        else {
-            writeMsg("Searching...");
-        }
-         */
+        startScan();
     }
-
-    // 非同期の処理内容
-    /*
-    private final BroadcastReceiver receiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-            System.out.println(action);
-            if (BluetoothDevice.ACTION_FOUND.equals(action)) { // 端末を見付けたら名前とMACを表示する
-                BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-                String deviceName = device.getName();
-                String deviceHardwareAddress = device.getAddress();
-                System.out.println(String.format("%s(%s)", deviceName, deviceHardwareAddress));
-                writeMsg(String.format("%s(%s)", deviceName, deviceHardwareAddress));
-            }
-            else if (BluetoothAdapter.ACTION_DISCOVERY_STARTED.equals(action)) { // 検索の開始を表示
-                writeMsg("Discovery Started");
-            }
-            else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) { // 検索の終了を表示
-                writeMsg("Discovery Finished");
-            }
-        }
-    };
-    */
 
     @Override
     protected void onResume() {
         super.onResume();
-        sensorManager.registerListener(this, mLight, SensorManager.SENSOR_DELAY_NORMAL);
+        sensorData.startSensor();
+        if (DataServer.grantedRequest == (DataServer.REQUEST_BLUETOOTH_ADVERTISE
+                | DataServer.REQUEST_BLUETOOTH_CONNECT | DataServer.REQUEST_BLUETOOTH_SCAN)) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+                dataServer.startServer(getApplicationContext(), this);
+        }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        sensorManager.unregisterListener(this);
+        sensorData.stopSensor();
+        dataServer.stopServer();
     }
 
-    /*
-    // Bluetooth を ONにしたときの処理
     @Override
-    protected void onActivityResult (int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        writeMsg(requestCode+","+resultCode);
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResult) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResult);
+        switch (requestCode) {
+            case DataServer.REQUEST_BLUETOOTH_ADVERTISE:
+                if (grantResult.length < 1 || grantResult[0] != PackageManager.PERMISSION_GRANTED) {
+                    Log.d(TAG, "BLUTOOTH_ADVERTISE is not permitted");
+                } else {
+                    DataServer.grantedRequest |= DataServer.REQUEST_BLUETOOTH_ADVERTISE;
+                }
+                break;
+            case DataServer.REQUEST_BLUETOOTH_CONNECT:
+                if (grantResult.length < 1 || grantResult[0] != PackageManager.PERMISSION_GRANTED) {
+                    Log.d(TAG, "BLUTOOTH_CONNECT is not permitted");
+                } else {
+                    DataServer.grantedRequest|= DataServer.REQUEST_BLUETOOTH_CONNECT;
+                }
+                break;
+            case DataServer.REQUEST_BLUETOOTH_SCAN:
+                if (grantResult.length < 1 || grantResult[0] != PackageManager.PERMISSION_GRANTED) {
+                    Log.d(TAG, "BLUTOOTH_SCAN is not permitted");
+                } else {
+                    DataServer.grantedRequest |= DataServer.REQUEST_BLUETOOTH_SCAN;
+                }
+                break;
+        }
+        Log.d(TAG, String.format("grantedRequest:%d", DataServer.grantedRequest));
+        if (DataServer.grantedRequest == (DataServer.REQUEST_BLUETOOTH_ADVERTISE
+                | DataServer.REQUEST_BLUETOOTH_CONNECT | DataServer.REQUEST_BLUETOOTH_SCAN)) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+                dataServer.startServer(getApplicationContext(), this);
+        }
     }
-    */
 }
