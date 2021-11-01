@@ -61,7 +61,7 @@ public class MainActivity extends AppCompatActivity {
         builder.setServiceUuid(new ParcelUuid(DataServer.SERVICE_UUID));
         List<ScanFilter> filters = new ArrayList<ScanFilter>();
         filters.add(builder.build());
-        Log.d(TAG, filters.toString());
+        //Log.d(TAG, filters.toString());
         return filters;
     }
 
@@ -82,6 +82,12 @@ public class MainActivity extends AppCompatActivity {
 
         scanFilters = buildScanFiters();
         scanSettings = buildScanSettings();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            requestPermissions(new String[]{Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_ADVERTISE, Manifest.permission.BLUETOOTH_SCAN},
+                    1001);
+        } else {
+            dataServer.startServer(getApplicationContext(), this);
+        }
     }
 
     // 画面にメッセ-ジを出すための処理
@@ -98,51 +104,28 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         sensorData.startSensor();
-        if (DataServer.grantedRequest == (DataServer.REQUEST_BLUETOOTH_ADVERTISE
-                | DataServer.REQUEST_BLUETOOTH_CONNECT | DataServer.REQUEST_BLUETOOTH_SCAN)) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
-                dataServer.startServer(getApplicationContext(), this);
-        }
+
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         sensorData.stopSensor();
-        dataServer.stopServer();
+        //dataServer.stopServer();
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResult) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResult);
-        switch (requestCode) {
-            case DataServer.REQUEST_BLUETOOTH_ADVERTISE:
-                if (grantResult.length < 1 || grantResult[0] != PackageManager.PERMISSION_GRANTED) {
-                    Log.d(TAG, "BLUTOOTH_ADVERTISE is not permitted");
-                } else {
-                    DataServer.grantedRequest |= DataServer.REQUEST_BLUETOOTH_ADVERTISE;
+        if (requestCode == 1001 ) {
+            for (int i = 0; i < grantResult.length; i++) {
+                if (grantResult[i] != PackageManager.PERMISSION_GRANTED) {
+                    Log.d(TAG, String.format("%s is not permitted", permissions[i].toString()));
                 }
-                break;
-            case DataServer.REQUEST_BLUETOOTH_CONNECT:
-                if (grantResult.length < 1 || grantResult[0] != PackageManager.PERMISSION_GRANTED) {
-                    Log.d(TAG, "BLUTOOTH_CONNECT is not permitted");
-                } else {
-                    DataServer.grantedRequest|= DataServer.REQUEST_BLUETOOTH_CONNECT;
-                }
-                break;
-            case DataServer.REQUEST_BLUETOOTH_SCAN:
-                if (grantResult.length < 1 || grantResult[0] != PackageManager.PERMISSION_GRANTED) {
-                    Log.d(TAG, "BLUTOOTH_SCAN is not permitted");
-                } else {
-                    DataServer.grantedRequest |= DataServer.REQUEST_BLUETOOTH_SCAN;
-                }
-                break;
-        }
-        Log.d(TAG, String.format("grantedRequest:%d", DataServer.grantedRequest));
-        if (DataServer.grantedRequest == (DataServer.REQUEST_BLUETOOTH_ADVERTISE
-                | DataServer.REQUEST_BLUETOOTH_CONNECT | DataServer.REQUEST_BLUETOOTH_SCAN)) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 dataServer.startServer(getApplicationContext(), this);
+            }
         }
     }
 }

@@ -80,6 +80,7 @@ public class DataServer {
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M)
             return;
+        /*
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_ADVERTISE)
                 == PackageManager.PERMISSION_GRANTED) {
            grantedRequest |= REQUEST_BLUETOOTH_ADVERTISE;
@@ -89,11 +90,13 @@ public class DataServer {
                 if (ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN)
                         == PackageManager.PERMISSION_GRANTED) {
                     grantedRequest |= REQUEST_BLUETOOTH_SCAN;
+                    */
                     if (bluetoothManager == null) {
                         bluetoothManager
                                 = (BluetoothManager) app.getSystemService(Context.BLUETOOTH_SERVICE);
                         adapter = bluetoothManager.getAdapter();
                     }
+                    /*
                     if (_requestEnableBluetooth == null) {
                         _requestEnableBluetooth = new MutableLiveData<Boolean>();
                     }
@@ -101,10 +104,15 @@ public class DataServer {
                         _requestEnableBluetooth.setValue(true);
                     } else {
                         _requestEnableBluetooth.setValue(false);
-                        if (adapter.isMultipleAdvertisementSupported()) {
+                     */
+                        Log.d(TAG, "--------");
+                        if (adapter.isMultipleAdvertisementSupported()) { // サーバーになれるかどうかのチェック
+                            Log.d(TAG, "Server supported");
                             setupGattServer(app);
                             startAdvertisement();
                         }
+
+                        /*
                     }
                 } else {
                     activity.requestPermissions(new String[]{Manifest.permission.BLUETOOTH_SCAN},
@@ -118,6 +126,7 @@ public class DataServer {
             activity.requestPermissions(new String[]{Manifest.permission.BLUETOOTH_ADVERTISE},
                     REQUEST_BLUETOOTH_ADVERTISE);
         }
+        */
     }
 
     void stopServer() {
