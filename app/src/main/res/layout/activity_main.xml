@@ -7,15 +7,28 @@
     tools:context=".MainActivity">
 
     <Button
-        android:id="@+id/button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="80dp"
-        android:onClick="searchBtn"
+        android:id="@+id/button1"
+        android:layout_width="93dp"
+        android:layout_height="57dp"
+        android:layout_marginStart="25dp"
+        android:layout_marginBottom="25dp"
+        android:onClick="search"
         android:text="Search"
+        app:backgroundTint="#00a1e9"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <Button
+        android:id="@+id/button2"
+        android:layout_width="105dp"
+        android:layout_height="57dp"
+        android:layout_marginBottom="25dp"
+        android:onClick="Connect"
+        android:text="Connect"
+        app:backgroundTint="#00a1e9"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.498"
+        app:layout_constraintHorizontal_bias="0.501"
         app:layout_constraintStart_toStartOf="parent" />
 
     <TextView
@@ -23,7 +36,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="220dp"
-        android:text="message"
+        android:text="sensor"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.498"
@@ -32,14 +45,40 @@
     <TextView
         android:id="@+id/message"
         android:layout_width="286dp"
-        android:layout_height="35dp"
+        android:layout_height="200dp"
         android:maxLines="10"
-        android:minLines="3"
-        android:onClick="searchBtn"
+        android:minLines="10"
+        android:nestedScrollingEnabled="true"
+        android:text="ScanResult"
         app:layout_constraintBottom_toTopOf="@+id/info"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.49" />
 
+    <Button
+        android:id="@+id/button3"
+        android:layout_width="93dp"
+        android:layout_height="57dp"
+        android:layout_marginEnd="25dp"
+        android:layout_marginBottom="25dp"
+        android:onClick="Close"
+        android:text="close"
+        app:backgroundTint="#00a1e9"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <Button
+        android:id="@+id/button4"
+        android:layout_width="93dp"
+        android:layout_height="57dp"
+        android:layout_marginStart="242dp"
+        android:layout_marginEnd="25dp"
+        android:layout_marginBottom="119dp"
+        android:onClick="Send"
+        android:text="Send"
+        app:backgroundTint="#00a1e9"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
 </androidx.constraintlayout.widget.ConstraintLayout>
