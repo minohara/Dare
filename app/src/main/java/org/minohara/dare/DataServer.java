@@ -1,12 +1,12 @@
 package org.minohara.dare;
 
-import android.Manifest;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattServer;
 import android.bluetooth.BluetoothGattServerCallback;
 import android.bluetooth.BluetoothGattService;
@@ -17,20 +17,17 @@ import android.bluetooth.le.AdvertiseData;
 import android.bluetooth.le.AdvertiseSettings;
 import android.bluetooth.le.BluetoothLeAdvertiser;
 import android.content.Context;
-import android.content.pm.PackageManager;
-import android.hardware.usb.UsbDeviceConnection;
 import android.os.Build;
 import android.os.ParcelUuid;
 import android.util.Log;
 import android.widget.TextView;
 
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.RequiresApi;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
+
+import com.google.common.hash.BloomFilter;
+import com.google.common.hash.Funnels;
 
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
@@ -67,6 +64,12 @@ public class DataServer {
     //private LiveData<DeviceConnectionState> deviceConnection = _deviceConnection
     private BluetoothGatt gatt;
     private BluetoothGattCharacteristic messageCharacteristic;
+    private int skey;
+    private int ckey;
+    private int key;
+    private int notkey = 0;
+    BloomFilter<Integer> filter = BloomFilter.create(Funnels.integerFunnel(), 500, 0.01);
+
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     void startServer(Context context, Activity activity) {
@@ -75,31 +78,31 @@ public class DataServer {
         this.activity = activity;
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M)
             return;
-            if (bluetoothManager == null) {
-                bluetoothManager = (BluetoothManager) app.getSystemService(Context.BLUETOOTH_SERVICE);
-                adapter = bluetoothManager.getAdapter();
-            }
-            if (adapter.isMultipleAdvertisementSupported()) {
-                Log.d(TAG, "Server supported");
-                setupGattServer(app);
-                startAdvertisement();
-            }
+        if (bluetoothManager == null) {
+            bluetoothManager = (BluetoothManager) app.getSystemService(Context.BLUETOOTH_SERVICE);
+            adapter = bluetoothManager.getAdapter();
+        }
+        if (adapter.isMultipleAdvertisementSupported()) {
+            Log.d(TAG, "Server supported");
+            setupGattServer(app);
+            startAdvertisement();
+            Makeskey();
+        }
     }
 
     void stopServer() {
         stopAdevertisement();
     }
 
-    Boolean sendMessage(String message) {
+    Boolean sendMessage(String x) {
         Log.d(TAG, "Send a message");
         messageCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
-        byte[] messageBytes = message.getBytes(StandardCharsets.UTF_8);
+        byte[] messageBytes = x.getBytes(StandardCharsets.UTF_8);
         messageCharacteristic.setValue(messageBytes);
         if ( gatt != null ) {
             boolean success = gatt.writeCharacteristic(messageCharacteristic);
             if (success) {
                 Log.d(TAG, "onServiceDiscovered: message send: true");
-                //_message.setValue(message);
             } else {
                 Log.d(TAG, "onServiceDiscovered: message send: false");
             }
@@ -108,24 +111,64 @@ public class DataServer {
         }
         return false;
     }
-//----------------------------------------------------------server----------------------------------------------------------
+
+    private void Makeskey(){
+        skey = 120;
+        Log.d(TAG, "Make server key");
+    }
+
+    public void Makeckey(){
+        ckey = 3;
+        Log.d(TAG,"Make client key");
+    }
+
+    public void Makekey(int x){
+        Log.d(TAG, "Make key");
+        String s1 = "KEY:";
+        String s2 = Integer.valueOf(x).toString();
+        String s = s1 + s2;
+        messageCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+        byte[] Bytes = s.getBytes(StandardCharsets.UTF_8);
+        messageCharacteristic.setValue(Bytes);
+        if ( gatt != null ) {
+            boolean success = gatt.writeCharacteristic(messageCharacteristic);
+            if (success) {
+                Log.d(TAG, "onServiceDiscovered: key send: true");
+            } else {
+                Log.d(TAG, "onServiceDiscovered: key send: false");
+            }
+        } else {
+            Log.d(TAG, "sendMessage: no gatt connection to send a key with");
+        }
+        return;
+    }
+    public void Makekeystop(int x){
+        Log.d(TAG, "Make key stop");
+        notkey = x;
+    }
+    private void ReadCharacteristic( UUID uuid_service, UUID uuid_characteristic ) {
+        if(gatt != null) {
+            return;
+        }
+        BluetoothGattCharacteristic x =gatt.getService( uuid_service ).getCharacteristic( uuid_characteristic );
+        gatt.readCharacteristic(x);
+    }
+    //----------------------------------------------------------server----------------------------------------------------------
     private void setupGattServer(Context app) {
         Log.d(TAG, "Set up GATT server");
         gattServerCallback = new GattServerCallback();
         gattServer = bluetoothManager.openGattServer(app, gattServerCallback);
         gattServer.addService(setupGattService());
     }
-
     private BluetoothGattService setupGattService() {
         Log.d(TAG, "Set up GATT service");
         BluetoothGattService service = new BluetoothGattService(SERVICE_UUID,BluetoothGattService.SERVICE_TYPE_PRIMARY);
-        BluetoothGattCharacteristic messageCharacteristic = new BluetoothGattCharacteristic(MESSAGE_UUID, BluetoothGattCharacteristic.PROPERTY_WRITE, BluetoothGattCharacteristic.PERMISSION_WRITE);
-        service.addCharacteristic(messageCharacteristic);
+        BluetoothGattCharacteristic Characteristic = new BluetoothGattCharacteristic(MESSAGE_UUID, BluetoothGattCharacteristic.PROPERTY_WRITE, BluetoothGattCharacteristic.PERMISSION_WRITE);
+        service.addCharacteristic(Characteristic);
         BluetoothGattCharacteristic confirmCharacteristic = new BluetoothGattCharacteristic(CONFIRM_UUID, BluetoothGattCharacteristic.PROPERTY_WRITE, BluetoothGattCharacteristic.PERMISSION_WRITE);
         service.addCharacteristic(confirmCharacteristic);
         return service;
     }
-
     private class GattServerCallback extends BluetoothGattServerCallback {
         @Override
         public void onConnectionStateChange(BluetoothDevice device, int status, int newState) {
@@ -139,7 +182,6 @@ public class DataServer {
                 //_deviceConnection.postValue(deviceConnectionState.Disconnected);
             }
         }
-
         @Override
         public void onCharacteristicWriteRequest(BluetoothDevice device, int requestId, BluetoothGattCharacteristic characteristic, boolean preparedWrite, boolean responseNeeded, int offset, byte[] value) {
             super.onCharacteristicWriteRequest(device, requestId, characteristic, preparedWrite, responseNeeded, offset, value);
@@ -148,29 +190,35 @@ public class DataServer {
                     gattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null);
                     if (value != null) {
                         String message = new String(value, StandardCharsets.UTF_8);
-                        Log.d(TAG, String.format("onCharacteristicWriteRequest: Have message: %s", message));
-
-                        if (message != null) {
-                            ((TextView)activity.findViewById(R.id.message))
-                                    .setText(message);
-                            //_message.postValue(RemoteMessage(message));
+                        if(message.startsWith("KEY:") && (notkey == 1)){
+                            key = (Integer.parseInt(message.substring(4)) + skey);
+                            filter.put(key);
+                            Log.d(TAG,String.format("make key:" + key));
+                        } else{
+                            Log.d(TAG, String.format("onCharacteristicWriteRequest: Have message: %s", message));
+                            ((TextView)activity.findViewById(R.id.message)).setText(message);
                         }
                     }
                 }
             }
         }
+        public void onCharacteristicRead(BluetoothDevice device, int requestId, BluetoothGattCharacteristic characteristic, boolean preparedWrite, boolean responseNeeded, int offset, byte[] value) {
+            messageCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+            byte[] Bytes = Integer.toString(key).getBytes(StandardCharsets.UTF_8);
+            messageCharacteristic.setValue(Bytes);
+            if (gatt != null) {
+                boolean success = gatt.writeCharacteristic(messageCharacteristic);
+            }
+        }
     }
-
     AdvertiseData buildAdvertiseData() {
         ParcelUuid parcelUuid = new ParcelUuid((SERVICE_UUID));
         AdvertiseData.Builder dataBuilder = new AdvertiseData.Builder().addServiceUuid(parcelUuid).setIncludeDeviceName(true);
         return dataBuilder.build();
     }
-
     AdvertiseSettings buildAdevertiseSettings() {
         return new AdvertiseSettings.Builder().setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_POWER).setTimeout(0).build();
     }
-
     private void startAdvertisement() {
         advertiser = adapter.getBluetoothLeAdvertiser();
         advertiseSettings = buildAdevertiseSettings();
@@ -185,7 +233,6 @@ public class DataServer {
             Log.d(TAG, "can't get advertiser");
         }
     }
-
     private void stopAdevertisement() {
         Log.d(TAG, "stopAdvertisement:");
         if ( advertiser != null ) {
@@ -194,14 +241,12 @@ public class DataServer {
             advertiseCallback = null;
         }
     }
-
     private class DeviceAdvertiseCallback extends AdvertiseCallback {
         @Override
         public void onStartFailure(int errorCode) {
             super.onStartFailure(errorCode);
             Log.d(TAG, String.format("Advertise failed with error: %d", errorCode));
         }
-
         @Override
         public void onStartSuccess(AdvertiseSettings settingsInEffect) {
             super.onStartSuccess(settingsInEffect);
@@ -210,6 +255,7 @@ public class DataServer {
     }
 //----------------------------------------------------------server----------------------------------------------------------
     void setCurrentConnection(BluetoothDevice device) {
+        Makeckey();
         currentDevice = device;
         connectToDevice(device);
     }
@@ -238,6 +284,7 @@ public class DataServer {
                 gatt = discoveredGatt;
                 BluetoothGattService service = discoveredGatt.getService(SERVICE_UUID);
                 messageCharacteristic = service.getCharacteristic(MESSAGE_UUID);
+                Makekey(ckey);
             }
         }
     }
