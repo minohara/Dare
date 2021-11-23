@@ -6,7 +6,6 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
-import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattServer;
 import android.bluetooth.BluetoothGattServerCallback;
 import android.bluetooth.BluetoothGattService;
@@ -26,9 +25,8 @@ import androidx.annotation.RequiresApi;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
-import com.google.common.hash.BloomFilter;
-import com.google.common.hash.Funnels;
-
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
@@ -40,6 +38,7 @@ public class DataServer {
     static final UUID SERVICE_UUID = UUID.fromString("18311939-d6d8-4b77-97e0-a4c323db95f4");
     static final UUID MESSAGE_UUID = UUID.fromString("f03fde31-928a-4c87-afff-6817e6ffe43a");
     static final UUID CONFIRM_UUID = UUID.fromString("855d6a12-478f-48f5-9171-b9e25800cb42");
+    static final UUID KEY_UUID = UUID.fromString("c2123ac0-3c00-4179-a1af-76f5647c15dc");
     static int grantedRequest = 0;
     private Context app = null;
     private Activity activity = null;
@@ -64,11 +63,12 @@ public class DataServer {
     //private LiveData<DeviceConnectionState> deviceConnection = _deviceConnection
     private BluetoothGatt gatt;
     private BluetoothGattCharacteristic messageCharacteristic;
+    private BluetoothGattCharacteristic keyCharacteristic;
     private int skey;
     private int ckey;
     private int key;
     private int notkey = 0;
-    BloomFilter<Integer> filter = BloomFilter.create(Funnels.integerFunnel(), 500, 0.01);
+    //BloomFilter<Integer> filter = BloomFilter.create(Funnels.integerFunnel(), 100, 0.01);
 
 
     @RequiresApi(api = Build.VERSION_CODES.M)
@@ -86,7 +86,7 @@ public class DataServer {
             Log.d(TAG, "Server supported");
             setupGattServer(app);
             startAdvertisement();
-            Makeskey();
+            //Makeskey();
         }
     }
 
@@ -112,26 +112,22 @@ public class DataServer {
         return false;
     }
 
-    private void Makeskey(){
+    private void makeSkey(){
         skey = 120;
         Log.d(TAG, "Make server key");
     }
 
-    public void Makeckey(){
+    public void makeCkey(){
         ckey = 3;
         Log.d(TAG,"Make client key");
     }
 
-    public void Makekey(int x){
-        Log.d(TAG, "Make key");
-        String s1 = "KEY:";
-        String s2 = Integer.valueOf(x).toString();
-        String s = s1 + s2;
-        messageCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
-        byte[] Bytes = s.getBytes(StandardCharsets.UTF_8);
-        messageCharacteristic.setValue(Bytes);
+    public void exchangeKey(){
+        Log.d(TAG, "Key exchange");
+
+        keyCharacteristic.setValue(ckey, BluetoothGattCharacteristic.FORMAT_UINT32,0);
         if ( gatt != null ) {
-            boolean success = gatt.writeCharacteristic(messageCharacteristic);
+            boolean success = gatt.readCharacteristic(keyCharacteristic);
             if (success) {
                 Log.d(TAG, "onServiceDiscovered: key send: true");
             } else {
@@ -160,13 +156,23 @@ public class DataServer {
         gattServer = bluetoothManager.openGattServer(app, gattServerCallback);
         gattServer.addService(setupGattService());
     }
+
     private BluetoothGattService setupGattService() {
         Log.d(TAG, "Set up GATT service");
-        BluetoothGattService service = new BluetoothGattService(SERVICE_UUID,BluetoothGattService.SERVICE_TYPE_PRIMARY);
-        BluetoothGattCharacteristic Characteristic = new BluetoothGattCharacteristic(MESSAGE_UUID, BluetoothGattCharacteristic.PROPERTY_WRITE, BluetoothGattCharacteristic.PERMISSION_WRITE);
+        BluetoothGattService service = new BluetoothGattService(SERVICE_UUID,
+                BluetoothGattService.SERVICE_TYPE_PRIMARY);
+        BluetoothGattCharacteristic Characteristic = new BluetoothGattCharacteristic(MESSAGE_UUID,
+                BluetoothGattCharacteristic.PROPERTY_WRITE, BluetoothGattCharacteristic.PERMISSION_WRITE);
         service.addCharacteristic(Characteristic);
-        BluetoothGattCharacteristic confirmCharacteristic = new BluetoothGattCharacteristic(CONFIRM_UUID, BluetoothGattCharacteristic.PROPERTY_WRITE, BluetoothGattCharacteristic.PERMISSION_WRITE);
+        BluetoothGattCharacteristic confirmCharacteristic = new BluetoothGattCharacteristic(CONFIRM_UUID,
+                BluetoothGattCharacteristic.PROPERTY_WRITE, BluetoothGattCharacteristic.PERMISSION_WRITE);
         service.addCharacteristic(confirmCharacteristic);
+        BluetoothGattCharacteristic keyCharacteristic = new BluetoothGattCharacteristic(KEY_UUID,
+                (BluetoothGattCharacteristic.PROPERTY_READ|BluetoothGattCharacteristic.PROPERTY_WRITE),
+                (BluetoothGattCharacteristic.PERMISSION_READ|BluetoothGattCharacteristic.PERMISSION_WRITE));
+        makeSkey();
+        keyCharacteristic.setValue(skey, BluetoothGattCharacteristic.FORMAT_UINT32, 0);
+        service.addCharacteristic(keyCharacteristic);
         return service;
     }
     private class GattServerCallback extends BluetoothGattServerCallback {
@@ -175,7 +181,8 @@ public class DataServer {
             super.onConnectionStateChange(device, status, newState);
             boolean isSuccess = (status == BluetoothGatt.GATT_SUCCESS);
             boolean isConnected = (newState == BluetoothProfile.STATE_CONNECTED);
-            Log.d(TAG, String.format("onConnectionStateChange: Server %s %s" + "succress: %s connected: %s", device.toString(), device.getName(), isSuccess?"true":"false", isConnected?"true":"false"));
+            Log.d(TAG, String.format("onConnectionStateChange: Server %s %s " + "succress: %s connected: %s",
+                    device.toString(), device.getName(), isSuccess?"true":"false", isConnected?"true":"false"));
             if (isSuccess && isConnected) {
                 _connectionRequest.postValue(device);
             } else {
@@ -185,29 +192,60 @@ public class DataServer {
         @Override
         public void onCharacteristicWriteRequest(BluetoothDevice device, int requestId, BluetoothGattCharacteristic characteristic, boolean preparedWrite, boolean responseNeeded, int offset, byte[] value) {
             super.onCharacteristicWriteRequest(device, requestId, characteristic, preparedWrite, responseNeeded, offset, value);
-            if (characteristic.getUuid() == MESSAGE_UUID) {
+            if (characteristic.getUuid().equals(MESSAGE_UUID)) {
                 if (gattServer != null) {
                     gattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null);
                     if (value != null) {
                         String message = new String(value, StandardCharsets.UTF_8);
                         if(message.startsWith("KEY:") && (notkey == 1)){
                             key = (Integer.parseInt(message.substring(4)) + skey);
-                            filter.put(key);
+                            //filter.put(key);
                             Log.d(TAG,String.format("make key:" + key));
                         } else{
                             Log.d(TAG, String.format("onCharacteristicWriteRequest: Have message: %s", message));
                             ((TextView)activity.findViewById(R.id.message)).setText(message);
                         }
+                        message = "received:"+ message;
+                        byte[] msgBytes = message.getBytes(StandardCharsets.UTF_8);
+                    }
+                }
+            }
+            else if (characteristic.getUuid().equals(KEY_UUID)) {
+                if (gattServer != null) {
+                    gattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null);
+                    if (value != null) {
+                        String message = new String(value, StandardCharsets.UTF_8);
+                        if (notkey == 1) {
+                            key = (Integer.parseInt(message.substring(4)) + skey);
+                            //filter.put(key);
+                            Log.d(TAG,String.format("make key:" + key));
+                        }
+                        message = "Key received:"+ message;
+                        byte[] msgBytes = message.getBytes(StandardCharsets.UTF_8);
                     }
                 }
             }
         }
-        public void onCharacteristicRead(BluetoothDevice device, int requestId, BluetoothGattCharacteristic characteristic, boolean preparedWrite, boolean responseNeeded, int offset, byte[] value) {
-            messageCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
-            byte[] Bytes = Integer.toString(key).getBytes(StandardCharsets.UTF_8);
-            messageCharacteristic.setValue(Bytes);
-            if (gatt != null) {
-                boolean success = gatt.writeCharacteristic(messageCharacteristic);
+        @Override
+        public void onCharacteristicReadRequest(
+                BluetoothDevice device,
+                int requestId,
+                int offset,
+                BluetoothGattCharacteristic characteristic) {
+            super.onCharacteristicReadRequest(device, requestId, offset, characteristic);
+            Log.d(TAG, String.format("onCharacteristicReadRequest %s", characteristic.getUuid()));
+            if (characteristic.getUuid().equals(KEY_UUID)) {
+                Log.d(TAG, "KEY_UUID read");
+                int key = ByteBuffer.wrap(characteristic.getValue()).getInt();
+                Log.d(TAG, String.format("ckey (%d) is received", key));
+                key = key + skey;
+                ByteBuffer buffer = ByteBuffer.allocate(4);
+                buffer.order(ByteOrder.LITTLE_ENDIAN);
+                buffer.putInt(key);
+                gattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS,
+                        0, buffer.array());
+                Log.d(TAG, String.format("key (%d) is sent", key));
+
             }
         }
     }
@@ -255,7 +293,7 @@ public class DataServer {
     }
 //----------------------------------------------------------server----------------------------------------------------------
     void setCurrentConnection(BluetoothDevice device) {
-        Makeckey();
+        makeCkey();
         currentDevice = device;
         connectToDevice(device);
     }
@@ -284,8 +322,25 @@ public class DataServer {
                 gatt = discoveredGatt;
                 BluetoothGattService service = discoveredGatt.getService(SERVICE_UUID);
                 messageCharacteristic = service.getCharacteristic(MESSAGE_UUID);
-                Makekey(ckey);
+                keyCharacteristic = service.getCharacteristic(KEY_UUID);
+                exchangeKey();
             }
+        }
+        @Override
+        public void onCharacteristicRead(
+                BluetoothGatt gatt,
+                BluetoothGattCharacteristic characteristic,
+                int status
+        ) {
+            super.onCharacteristicRead(gatt, characteristic, status);
+            if ( status == BluetoothGatt.GATT_SUCCESS ) {
+                Log.d(TAG, String.format("onCharacteristicRead: Have gatt %s", characteristic.getUuid().toString()));
+                if (characteristic.getUuid().equals(KEY_UUID)) {
+                    int key = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT32, 0);
+                    Log.d(TAG, String.format("received key (%d)", key));
+                }
+            }
+
         }
     }
 //----------------------------------------------------------client----------------------------------------------------------

@@ -73,13 +73,21 @@ public class MainActivity extends AppCompatActivity {
         return builder.build();
     }
 
+    private boolean scanning = false;
     private void startScan() {
         if (scanner == null) {
             scanner = adapter.getBluetoothLeScanner();
         }
-        textView.setText("");
-        scanner.startScan(scanFilters, scanSettings, scanCallback);
-        Log.d(TAG, "Scan started");
+        if ( !scanning ) {
+            textView.setText("");
+            scanner.startScan(scanFilters, scanSettings, scanCallback);
+            Log.d(TAG, "Scan started");
+            scanning = true;
+        }
+        else {
+            scanner.stopScan(scanCallback);
+            scanning = false;
+        }
     }
 
     private ScanCallback scanCallback = new ScanCallback() {
