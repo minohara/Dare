@@ -25,8 +25,8 @@ import androidx.annotation.RequiresApi;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
-//import com.google.common.hash.BloomFilter;
-//import com.google.common.hash.Funnels;
+import com.google.common.hash.BloomFilter;
+import com.google.common.hash.Funnels;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -71,7 +71,7 @@ public class DataServer {
     private int client_key;
     private int key;
     private int key_stopper = 1;
-    //BloomFilter<Integer> filter = BloomFilter.create(Funnels.integerFunnel(), 100, 0.01);
+    BloomFilter<Integer> filter = BloomFilter.create(Funnels.integerFunnel(), 30, 0.01);
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     void startServer(Context context, Activity activity) {
@@ -197,16 +197,16 @@ public class DataServer {
                     gattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null);
                     if (value != null) {
                         String message = new String(value, StandardCharsets.UTF_8);
-                        if (message.startsWith("KEY:") && (key_stopper == 1)) {
-                            key = (Integer.parseInt(message.substring(4)) + server_key);
-                            //filter.put(master_key);
-                            Log.d(TAG, String.format("make key:" + key));
-                        } else {
+                        if (message.startsWith("KEY")) {
+                            //key = (Integer.parseInt(message.substring(4)) + server_key);
+                            //filter.put(key);
+                            //Log.d(TAG, String.format("make key:" + key));
+                       //} else {
                             Log.d(TAG, String.format("onCharacteristicWriteRequest: Have message: %s", message));
                             ((TextView) activity.findViewById(R.id.message)).setText(message);
                         }
-                        message = "received:" + message;
-                        byte[] msgBytes = message.getBytes(StandardCharsets.UTF_8);
+                        //message = "received:" + message;
+                        //byte[] msgBytes = message.getBytes(StandardCharsets.UTF_8);
                     }
                 }
             } else if (characteristic.getUuid().equals(KEY_UUID)) {
@@ -216,7 +216,7 @@ public class DataServer {
                         String message = new String(value, StandardCharsets.UTF_8);
                         if (key_stopper == 1) {
                             key = (Integer.parseInt(message) + server_key);
-                            //filter.put(master_key);
+                            filter.put(key);
                             Log.d(TAG, String.format("make key:" + key));
                             int x = key * 2;
                             //keyCharacteristic.setValue(Integer.toString(x));
@@ -342,6 +342,7 @@ public class DataServer {
                 if (characteristic.getUuid().equals(KEY_UUID)) {
                     Log.d(TAG, String.format("check:if"));
                     int key = Integer.parseInt(characteristic.getStringValue(0));
+                    filter.put(key);
                     //int key = ByteBuffer.wrap(characteristic.getValue()).getInt();
                     Log.d(TAG, String.format("received key (%d)", key));
                 }
