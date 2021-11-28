@@ -8,10 +8,10 @@
 
     <Button
         android:id="@+id/button1"
-        android:layout_width="93dp"
-        android:layout_height="57dp"
-        android:layout_marginStart="25dp"
-        android:layout_marginBottom="25dp"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:layout_marginStart="30dp"
+        android:layout_marginBottom="130dp"
         android:onClick="search"
         android:text="Search"
         app:backgroundTint="#00a1e9"
@@ -20,26 +20,60 @@
 
     <Button
         android:id="@+id/button2"
-        android:layout_width="105dp"
-        android:layout_height="57dp"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:layout_marginStart="30dp"
         android:layout_marginBottom="25dp"
         android:onClick="Connect"
         android:text="Connect"
         app:backgroundTint="#00a1e9"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.501"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <Button
+        android:id="@+id/button3"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:layout_marginStart="150dp"
+        android:layout_marginBottom="130dp"
+        android:onClick="Send"
+        android:text="Send"
+        app:backgroundTint="#00a1e9"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <Button
+        android:id="@+id/button4"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:layout_marginStart="270dp"
+        android:layout_marginBottom="130dp"
+        android:onClick="keystopper"
+        android:text="key_stopper"
+        app:backgroundTint="#00a1e9"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <Button
+        android:id="@+id/button5"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:layout_marginStart="270dp"
+        android:layout_marginBottom="25dp"
+        android:onClick="Close"
+        android:text="close"
+        app:backgroundTint="#00a1e9"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
 
     <TextView
         android:id="@+id/info"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="220dp"
+        android:layout_marginBottom="264dp"
         android:text="sensor"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.498"
         app:layout_constraintStart_toStartOf="parent" />
 
     <TextView
@@ -56,29 +90,4 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.49" />
 
-    <Button
-        android:id="@+id/button3"
-        android:layout_width="93dp"
-        android:layout_height="57dp"
-        android:layout_marginEnd="25dp"
-        android:layout_marginBottom="25dp"
-        android:onClick="Close"
-        android:text="close"
-        app:backgroundTint="#00a1e9"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
-    <Button
-        android:id="@+id/button4"
-        android:layout_width="93dp"
-        android:layout_height="57dp"
-        android:layout_marginStart="242dp"
-        android:layout_marginEnd="25dp"
-        android:layout_marginBottom="119dp"
-        android:onClick="Send"
-        android:text="Send"
-        app:backgroundTint="#00a1e9"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
 </androidx.constraintlayout.widget.ConstraintLayout>

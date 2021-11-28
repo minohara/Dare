@@ -129,6 +129,10 @@ public class MainActivity extends AppCompatActivity {
         dataServer.sendMessage(aaa);
     }
 
+    public void keystopper(View vv) {
+        dataServer.Makekeystop();
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
