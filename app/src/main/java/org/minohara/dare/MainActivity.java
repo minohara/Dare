@@ -10,6 +10,7 @@ import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -74,17 +75,19 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private boolean scanning = false;
-    private void startScan() {
+    private void startScan(View view) {
         if (scanner == null) {
             scanner = adapter.getBluetoothLeScanner();
         }
         if ( !scanning ) {
+            view.setBackgroundColor(Color.RED);
             textView.setText("");
             scanner.startScan(scanFilters, scanSettings, scanCallback);
             Log.d(TAG, "Scan started");
             scanning = true;
         }
         else {
+            view.setBackgroundColor(Color.rgb(0x00, 0xa1, 0xe9));
             scanner.stopScan(scanCallback);
             scanning = false;
         }
@@ -115,7 +118,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void search(View view) {
-        startScan();
+        startScan(view);
     }
 
     public void Connect(View vie) {

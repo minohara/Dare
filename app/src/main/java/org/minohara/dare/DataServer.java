@@ -130,7 +130,6 @@ public class DataServer {
         keyCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
         byte[] keyBytes = Integer.toString(client_key).getBytes(StandardCharsets.UTF_8);
         keyCharacteristic.setValue(keyBytes);
-        //keyCharacteristic.setValue(client_key, BluetoothGattCharacteristic.FORMAT_UINT32,0);
         if (gatt != null) {
             boolean success = gatt.writeCharacteristic(keyCharacteristic);
             if (success) {
@@ -171,7 +170,7 @@ public class DataServer {
                 (BluetoothGattCharacteristic.PROPERTY_READ | BluetoothGattCharacteristic.PROPERTY_WRITE),
                 (BluetoothGattCharacteristic.PERMISSION_READ | BluetoothGattCharacteristic.PERMISSION_WRITE));
         makeSkey();
-        keyCharacteristic.setValue(server_key, BluetoothGattCharacteristic.FORMAT_UINT32, 0);
+        //keyCharacteristic.setValue(server_key, BluetoothGattCharacteristic.FORMAT_UINT32, 0);
         service.addCharacteristic(keyCharacteristic);
         return service;
     }
@@ -184,11 +183,13 @@ public class DataServer {
             boolean isConnected = (newState == BluetoothProfile.STATE_CONNECTED);
             Log.d(TAG, String.format("onConnectionStateChange: Server %s %s " + "succress: %s connected: %s",
                     device.toString(), device.getName(), isSuccess ? "true" : "false", isConnected ? "true" : "false"));
+            /*
             if (isSuccess && isConnected) {
                 _connectionRequest.postValue(device);
             } else {
                 //_deviceConnection.postValue(deviceConnectionState.Disconnected);
             }
+            */
         }
 
         @Override
@@ -215,42 +216,28 @@ public class DataServer {
                 }
             } else if (characteristic.getUuid().equals(KEY_UUID)) {//
                 if (gattServer != null) {
-                    gattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null);
                     if (value != null) {
                         String message = new String(value, StandardCharsets.UTF_8);
                         if (key_stopper == 1) {
                             key = (Integer.parseInt(message) + server_key);
                             filter.put(key);
-                            Log.d(TAG, String.format("make key:" + key));
-                            int x = key * 2;
-                            //keyCharacteristic.setValue(Integer.toString(x));
-                            //keyCharacteristic.setValue(x, BluetoothGattCharacteristic.FORMAT_UINT32, 0);
-                            byte[] Bytes = Integer.toString(x).getBytes(StandardCharsets.UTF_8);
-                            gattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, Bytes);
+                            Log.d(TAG, String.format("Key (%d) is registered for (%s)", key, device.toString()));
+                            gattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null);
                         }
-                        message = "Key received:" + message;
-                        byte[] msgBytes = message.getBytes(StandardCharsets.UTF_8);
                     }
                 }
             }
         }
-        /*@Override
+        @Override
         public void onCharacteristicReadRequest(BluetoothDevice device, int requestId, int offset, BluetoothGattCharacteristic characteristic) {
             super.onCharacteristicReadRequest(device, requestId, offset, characteristic);
             Log.d(TAG, String.format("onCharacteristicReadRequest ", characteristic.getUuid()));
             if (characteristic.getUuid().equals(KEY_UUID)) {
-                Log.d(TAG, "KEY_UUID read");
-                int key = ByteBuffer.wrap(characteristic.getValue()).getInt();
-                Log.d(TAG, String.format("client_key is received", key));
-                key = key + server_key;
-                ByteBuffer buffer = ByteBuffer.allocate(4);
-                buffer.order(ByteOrder.LITTLE_ENDIAN);
-                buffer.putInt(key);
-                gattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, buffer.array());
-                Log.d(TAG, String.format("key is sent", key));
-
+                byte[] messageBytes = String.valueOf(server_key).getBytes(StandardCharsets.UTF_8);
+                gattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, messageBytes);
+                Log.d(TAG, String.format("Key (%d) is sent to (%s)", server_key, device.toString()));
             }
-        }*/
+        }
     }
 
     AdvertiseData buildAdvertiseData() {
@@ -345,13 +332,22 @@ public class DataServer {
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 Log.d(TAG, String.format("onCharacteristicWrite: Have gatt %s", characteristic.getUuid().toString()));
                 if (characteristic.getUuid().equals(KEY_UUID)) {
-                    Log.d(TAG, String.format("check:if"));
-                    //byte[]  Byte   =   characteristic.getValue();
-                    //ByteBuffer  bb  =   ByteBuffer.wrap(value);
-                    //int key = Integer.parseInt(String.valueOf(bb.getShort()));
-                    //int key = ByteBuffer.wrap(characteristic.getValue()).getInt();
-                    filter.put(key);
+                    boolean success = gatt.readCharacteristic(keyCharacteristic);
+                }
+            }
+
+        }
+        @Override
+        public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+            super.onCharacteristicRead(gatt, characteristic, status);
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                Log.d(TAG, String.format("onCharacteristicRead: Have gatt %s", characteristic.getUuid().toString()));
+                if (characteristic.getUuid().equals(KEY_UUID)) {
+                    int key = Integer.parseInt( new String(characteristic.getValue()));
                     Log.d(TAG, String.format("received key (%d)", key));
+                    key += client_key;
+                    Log.d(TAG, String.format("exchanged key (%d)", key));
+                    filter.put(key);
                 }
             }
 
