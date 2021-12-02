@@ -71,6 +71,8 @@ public class DataServer {
     private int client_key;
     private int key;
     private int key_stopper = 1;
+    private boolean f;
+    private String s;
     BloomFilter<Integer> filter = BloomFilter.create(Funnels.integerFunnel(), 30, 0.01);
 
     @RequiresApi(api = Build.VERSION_CODES.M)
@@ -197,19 +199,21 @@ public class DataServer {
                     gattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null);
                     if (value != null) {
                         String message = new String(value, StandardCharsets.UTF_8);
-                        if (message.startsWith("KEY")) {
-                            //key = (Integer.parseInt(message.substring(4)) + server_key);
+                        s = message.substring(0,3);
+                        f = filter.mightContain(Integer.parseInt(s));
+                        if (f = true) {
+                            //key = (Integer.parseInt(message.substring(0)) + server_key);
                             //filter.put(key);
                             //Log.d(TAG, String.format("make key:" + key));
                        //} else {
                             Log.d(TAG, String.format("onCharacteristicWriteRequest: Have message: %s", message));
                             ((TextView) activity.findViewById(R.id.message)).setText(message);
                         }
-                        //message = "received:" + message;
-                        //byte[] msgBytes = message.getBytes(StandardCharsets.UTF_8);
+                        message = "received:" + message;
+                        byte[] msgBytes = message.getBytes(StandardCharsets.UTF_8);
                     }
                 }
-            } else if (characteristic.getUuid().equals(KEY_UUID)) {
+            } else if (characteristic.getUuid().equals(KEY_UUID)) {//
                 if (gattServer != null) {
                     gattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null);
                     if (value != null) {
@@ -220,8 +224,9 @@ public class DataServer {
                             Log.d(TAG, String.format("make key:" + key));
                             int x = key * 2;
                             //keyCharacteristic.setValue(Integer.toString(x));
-                            keyCharacteristic.setValue(x, BluetoothGattCharacteristic.FORMAT_UINT32, 0);
-                            gattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null);
+                            //keyCharacteristic.setValue(x, BluetoothGattCharacteristic.FORMAT_UINT32, 0);
+                            byte[] Bytes = Integer.toString(x).getBytes(StandardCharsets.UTF_8);
+                            gattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, Bytes);
                         }
                         message = "Key received:" + message;
                         byte[] msgBytes = message.getBytes(StandardCharsets.UTF_8);
@@ -317,7 +322,7 @@ public class DataServer {
             boolean isConnected = (newState == BluetoothProfile.STATE_CONNECTED);
             Log.d(TAG, String.format("onConnectionStateChange: Client %s success: %s connected: %s", gatt.toString(), isSuccess ? "true" : "false", isConnected ? "true" : "false"));
             if (isSuccess && isConnected) {
-                gatt.discoverServices(); // サービス取得要求
+                gatt.discoverServices();
             }
         }
 
@@ -341,9 +346,11 @@ public class DataServer {
                 Log.d(TAG, String.format("onCharacteristicWrite: Have gatt %s", characteristic.getUuid().toString()));
                 if (characteristic.getUuid().equals(KEY_UUID)) {
                     Log.d(TAG, String.format("check:if"));
-                    int key = Integer.parseInt(characteristic.getStringValue(0));
-                    filter.put(key);
+                    //byte[]  Byte   =   characteristic.getValue();
+                    //ByteBuffer  bb  =   ByteBuffer.wrap(value);
+                    //int key = Integer.parseInt(String.valueOf(bb.getShort()));
                     //int key = ByteBuffer.wrap(characteristic.getValue()).getInt();
+                    filter.put(key);
                     Log.d(TAG, String.format("received key (%d)", key));
                 }
             }
