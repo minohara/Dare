@@ -62,8 +62,6 @@ public class DataServer {
     private BluetoothGatt gattClient;
     private BluetoothGattCallback gattClientCallback = null;
     private BluetoothDevice currentDevice;
-    //private MutableLiveData<DeviceConnectionState> _deviceConnection;
-    //private LiveData<DeviceConnectionState> deviceConnection = _deviceConnection
     private BluetoothGatt gatt;
     private BluetoothGattCharacteristic messageCharacteristic;
     private BluetoothGattCharacteristic keyCharacteristic;
@@ -71,7 +69,7 @@ public class DataServer {
     private int client_key;
     private int key;
     private int key_stopper = 1;
-    private boolean f;
+    private boolean f = false;
     private String s;
     BloomFilter<Integer> filter = BloomFilter.create(Funnels.integerFunnel(), 30, 0.01);
 
@@ -99,6 +97,8 @@ public class DataServer {
 
     Boolean sendMessage(String x) {
         Log.d(TAG, "Send a message");
+        x = Integer.toString(client_key) + x;
+        Log.d(TAG,x);
         messageCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
         byte[] messageBytes = x.getBytes(StandardCharsets.UTF_8);
         messageCharacteristic.setValue(messageBytes);
@@ -170,7 +170,6 @@ public class DataServer {
                 (BluetoothGattCharacteristic.PROPERTY_READ | BluetoothGattCharacteristic.PROPERTY_WRITE),
                 (BluetoothGattCharacteristic.PERMISSION_READ | BluetoothGattCharacteristic.PERMISSION_WRITE));
         makeSkey();
-        //keyCharacteristic.setValue(server_key, BluetoothGattCharacteristic.FORMAT_UINT32, 0);
         service.addCharacteristic(keyCharacteristic);
         return service;
     }
@@ -183,35 +182,30 @@ public class DataServer {
             boolean isConnected = (newState == BluetoothProfile.STATE_CONNECTED);
             Log.d(TAG, String.format("onConnectionStateChange: Server %s %s " + "succress: %s connected: %s",
                     device.toString(), device.getName(), isSuccess ? "true" : "false", isConnected ? "true" : "false"));
-            /*
-            if (isSuccess && isConnected) {
-                _connectionRequest.postValue(device);
-            } else {
-                //_deviceConnection.postValue(deviceConnectionState.Disconnected);
-            }
-            */
         }
 
         @Override
-        public void onCharacteristicWriteRequest(BluetoothDevice device, int requestId, BluetoothGattCharacteristic characteristic, boolean preparedWrite, boolean responseNeeded, int offset, byte[] value) {
+        public void onCharacteristicWriteRequest(BluetoothDevice device,
+                                                 int requestId,
+                                                 BluetoothGattCharacteristic characteristic,
+                                                 boolean preparedWrite,
+                                                 boolean responseNeeded,
+                                                 int offset,
+                                                 byte[] value) {
             super.onCharacteristicWriteRequest(device, requestId, characteristic, preparedWrite, responseNeeded, offset, value);
             if (characteristic.getUuid().equals(MESSAGE_UUID)) {
                 if (gattServer != null) {
                     gattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null);
                     if (value != null) {
                         String message = new String(value, StandardCharsets.UTF_8);
-                        s = message.substring(0,3);
-                        f = filter.mightContain(Integer.parseInt(s));
-                        if (f = true) {
-                            //key = (Integer.parseInt(message.substring(0)) + server_key);
-                            //filter.put(key);
-                            //Log.d(TAG, String.format("make key:" + key));
-                       //} else {
-                            Log.d(TAG, String.format("onCharacteristicWriteRequest: Have message: %s", message));
+                        s = message.substring(0,1);
+                        f = filter.mightContain(Integer.parseInt(s)+server_key);
+                        if (f) {
+                            Log.d(TAG, String.format("onCharacteristicWriteRequest: Have message: %s", message.substring(1)));
                             ((TextView) activity.findViewById(R.id.message)).setText(message);
+                        }else{
+                            ((TextView) activity.findViewById(R.id.message)).setText("不正なメッセージを検知しました。");
                         }
-                        message = "received:" + message;
-                        byte[] msgBytes = message.getBytes(StandardCharsets.UTF_8);
                     }
                 }
             } else if (characteristic.getUuid().equals(KEY_UUID)) {//
