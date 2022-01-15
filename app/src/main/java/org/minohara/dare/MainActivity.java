@@ -12,6 +12,7 @@ import android.bluetooth.le.ScanSettings;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.hardware.SensorManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -29,6 +30,7 @@ import androidx.fragment.app.DialogFragment;
 import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
 public class MainActivity extends AppCompatActivity {
@@ -44,6 +46,8 @@ public class MainActivity extends AppCompatActivity {
     private static final long SCAN_PERIOD = 10000;
     private ArrayList<BluetoothDevice> deviceList = new ArrayList<>();
     ScanSettings scanSettings;
+    Random rand = new Random();
+    private SensorManager manager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,6 +58,7 @@ public class MainActivity extends AppCompatActivity {
         sensorData = new SensorData(getApplicationContext());
         scanFilters = buildScanFilters();
         scanSettings = buildScanSettings();
+        manager = (SensorManager)getSystemService(SENSOR_SERVICE);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             requestPermissions(new String[]{Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_ADVERTISE, Manifest.permission.BLUETOOTH_SCAN}, 1001);
@@ -130,8 +135,9 @@ public class MainActivity extends AppCompatActivity {
     public void Close(View vi) { dataServer.stopServer(); }
 
     public void Send(View v){
-        String aaa = "1234";
-        dataServer.sendMessage(aaa);
+        //int num = rand.nextInt(10) + 100;
+        //String aaa = "乱数:" + num;
+        dataServer.sendMessage(" " + sensorData.lux());
     }
 
     public void keystopper(View vv) {
