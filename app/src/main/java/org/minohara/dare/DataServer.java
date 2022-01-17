@@ -151,7 +151,7 @@ public class DataServer {
     }
 
     public void Makekeystop() {
-        Log.d(TAG, "key stop");
+        ((TextView) activity.findViewById(R.id.err)).append("鍵生成を停止しました\n");
         key_stopper = 0;
     }
 
@@ -198,9 +198,9 @@ public class DataServer {
                         f = filter.mightContain(k);
                         if (f) {
                             Log.d(TAG, String.format("Have message: %s",message.substring(2)));
-                            ((TextView) activity.findViewById(R.id.message)).setText(" " + message.substring(2));
+                            ((TextView) activity.findViewById(R.id.message)).append("" + message.substring(2) + "\n");
                         }else{
-                            ((TextView) activity.findViewById(R.id.err)).setText("不正なメッセージを検知しました。");
+                            ((TextView) activity.findViewById(R.id.err)).append("不正なメッセージを検知しました。\n");
                         }
                     }
                 }
@@ -228,11 +228,13 @@ public class DataServer {
                 byte[] messageBytes = String.valueOf(server_key).getBytes(StandardCharsets.UTF_8);
                 gattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, messageBytes);
                 Log.d(TAG, String.format("Key (%d) is sent to (%s)", server_key, device.toString()));
+                ((TextView) activity.findViewById(R.id.connecting)).append("端末が接続しました\n");
             }else {
                 fake_key = 999;
                 byte[] messageBytes = String.valueOf(fake_key).getBytes(StandardCharsets.UTF_8);
                 gattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, messageBytes);
                 Log.d(TAG, String.format("Key (%d) is sent to (%s)", fake_key, device.toString()));
+                ((TextView) activity.findViewById(R.id.connecting)).append("端末が接続しました\n");
             }
         }
     }
@@ -343,7 +345,7 @@ public class DataServer {
                     int key = Integer.parseInt( new String(characteristic.getValue()));
                     Log.d(TAG, String.format("received key (%d)", key));
                     key += client_key;
-                    Log.d(TAG, String.format("exchanged key (%d)", key));
+                    //Log.d(TAG, String.format("exchanged key (%d)", key));
                     filter.put(key);
                 }
             }

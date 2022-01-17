@@ -17,6 +17,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.ParcelUuid;
+import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -54,6 +55,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         textView = (TextView)findViewById(R.id.message);
+        textView.setMovementMethod(new ScrollingMovementMethod());
         dataServer = new DataServer();
         sensorData = new SensorData(getApplicationContext());
         scanFilters = buildScanFilters();
@@ -141,6 +143,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void keystopper(View vv) {
+        vv.setBackgroundColor(Color.RED);
         dataServer.Makekeystop();
     }
 
